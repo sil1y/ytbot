@@ -33,7 +33,6 @@ class AudioDownloader:
         """Настройки yt-dlp БЕЗ proxy"""
         base_opts = {
             'ffmpeg_location': '/usr/bin/',
-            'ffprobe_location': '/usr/bin/',
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
