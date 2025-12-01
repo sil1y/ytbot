@@ -29,10 +29,9 @@ class AudioDownloader:
     def _get_ydl_opts(self) -> dict:
         """Настройки для скачивания M4A аудио"""
         base_opts = {
-            # Скачиваем M4A аудио (аудио в MP4 контейнере)
             'format': 'bestaudio[ext=m4a]/bestaudio',
             
-            # Отключаем все что требует ffmpeg
+            # Отключение всего что требует ffmpeg
             'writethumbnail': False,
             'embedthumbnail': False,
             'addmetadata': False,
@@ -75,11 +74,9 @@ class AudioDownloader:
                 logger.info("Начинаем скачивание файла...")
                 ydl.download([url])
                 
-                # Получаем имя скачанного файла
                 original_filename = ydl.prepare_filename(info)
                 logger.info(f"Оригинальное имя файла: {original_filename}")
                 
-                # Проверяем что файл существует
                 if not os.path.exists(original_filename):
                     logger.error(f"Файл не найден: {original_filename}")
                     # Попробуем найти файл по маске
@@ -87,7 +84,6 @@ class AudioDownloader:
                     logger.info(f"Файлы в папке: {files}")
                     return DownloadResult(success=False, error="Файл не создан")
                 
-                # Переименовываем в MP3 (Telegram понимает M4A внутри MP3)
                 mp3_filename = os.path.splitext(original_filename)[0] + '.mp3'
                 os.rename(original_filename, mp3_filename)
                 logger.info(f"Переименовали в: {mp3_filename}")

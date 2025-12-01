@@ -28,7 +28,6 @@ async def handle_download(message: types.Message):
             await progress_msg.edit_text(f"❌ {result.error}")
             return
         
-        # Отправляем аудио как ответ на исходное сообщение
         await message.reply_audio(
             audio=FSInputFile(result.filename),
             title=result.title[:64] if result.title else "Audio",
