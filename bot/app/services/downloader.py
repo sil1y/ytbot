@@ -43,6 +43,7 @@ class AudioDownloader:
             'addmetadata': True,
             'socket_timeout': 120,
             'retries': 10,
+            'ffmpeg_location': '/usr/bin/ffmpeg',
         }
         return base_opts
 
