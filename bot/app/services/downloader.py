@@ -30,20 +30,22 @@ class AudioDownloader:
         os.makedirs(self.download_dir, exist_ok=True)
 
     def _get_ydl_opts(self) -> dict:
-        """Настройки yt-dlp БЕЗ proxy"""
+        """Настройки yt-dlp БЕЗ конвертации - скачиваем готовые MP3"""
         base_opts = {
-            'ffmpeg_location': '/usr/bin/',
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '320',
-            }],
-            'writethumbnail': True,
-            'embedthumbnail': True,
-            'addmetadata': True,
+            # Скачиваем готовые MP3 файлы напрямую
+            'format': 'bestaudio[ext=mp3]/bestaudio',
+            
+            # ОТКЛЮЧАЕМ postprocessors - не конвертируем!
+            # 'postprocessors': [],
+            
+            # Отключаем все что требует ffmpeg
+            'writethumbnail': False,
+            'embedthumbnail': False,
+            'addmetadata': False,
+            
             'socket_timeout': 120,
             'retries': 10,
+            'ignoreerrors': False,
         }
         return base_opts
 
