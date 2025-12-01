@@ -14,7 +14,7 @@ class DownloadProgress:
         """Обновляет сообщение с прогрессом"""
         if d['status'] == 'downloading':
             current_time = asyncio.get_event_loop().time()
-            # Обновляем не чаще чем раз в 2 секунды
+            
             if current_time - self.last_update < 2:
                 return
                 
@@ -39,7 +39,7 @@ class DownloadProgress:
                     parse_mode='HTML'
                 )
             except Exception:
-                pass  # Игнорируем ошибки редактирования
+                pass 
                 
         elif d['status'] == 'processing':
             text = "🎵 <b>Обработка аудио</b>\n\nКонвертирую в MP3..."
