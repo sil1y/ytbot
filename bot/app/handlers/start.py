@@ -89,23 +89,3 @@ async def process_example_callback(callback: types.CallbackQuery):
     await callback.message.answer(example_text, parse_mode='HTML')
     await callback.answer()
     
-@router.message(Command("proxy"))
-async def cmd_proxy(message: types.Message):
-    """Показывает статус proxy"""
-    if config.USE_PROXY and config.PROXY_URL:
-        status = "✅ Включен"
-        # Скрываем пароль в выводе
-        proxy_display = config.PROXY_URL
-        if '@' in proxy_display:
-            # Показываем только user@host:port без пароля
-            parts = proxy_display.split('@')
-            proxy_display = f"{parts[0].split(':')[0]}:***@{parts[1]}"
-    else:
-        status = "❌ Выключен"
-        proxy_display = "не настроен"
-    
-    await message.answer(
-        f"🔄 <b>Статус Proxy:</b> {status}\n"
-        f"🌐 <b>Адрес:</b> <code>{proxy_display}</code>",
-        parse_mode='HTML'
-    )

@@ -6,11 +6,8 @@ from dataclasses import dataclass
 from typing import Optional
 import logging
 
-
-from pytube import YouTube
 logger = logging.getLogger(__name__)
 
-    
 @dataclass
 class DownloadResult:
     success: bool
@@ -30,13 +27,10 @@ class AudioDownloader:
         os.makedirs(self.download_dir, exist_ok=True)
 
     def _get_ydl_opts(self) -> dict:
-        """Настройки yt-dlp БЕЗ конвертации - скачиваем готовые MP3"""
+        """Настройки для скачивания M4A аудио"""
         base_opts = {
-            # Скачиваем готовые MP3 файлы напрямую
-            'format': 'bestaudio[ext=mp3]/bestaudio',
-            
-            # ОТКЛЮЧАЕМ postprocessors - не конвертируем!
-            # 'postprocessors': [],
+            # Скачиваем M4A аудио (аудио в MP4 контейнере)
+            'format': 'bestaudio[ext=m4a]/bestaudio',
             
             # Отключаем все что требует ffmpeg
             'writethumbnail': False,
@@ -50,11 +44,13 @@ class AudioDownloader:
         return base_opts
 
     async def download_audio(self, url: str) -> DownloadResult:
-        """Скачивает аудио БЕЗ proxy"""
+        """Скачивает аудио в M4A и переименовывает в MP3"""
         try:
             file_id = str(uuid.uuid4())
             ydl_opts = self._get_ydl_opts()
             ydl_opts['outtmpl'] = os.path.join(self.download_dir, f'{file_id}.%(ext)s')
+            
+            logger.info(f"Начинаем скачивание: {url}")
             
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
@@ -66,18 +62,35 @@ class AudioDownloader:
             return result
             
         except Exception as e:
+            logger.error(f"Ошибка в download_audio: {e}")
             return DownloadResult(success=False, error=f"Ошибка: {str(e)}")
 
     def _download_sync(self, url: str, ydl_opts: dict) -> DownloadResult:
         """Синхронная версия скачивания"""
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-                mp3_filename = os.path.splitext(filename)[0] + '.mp3'
+                logger.info("Скачиваем информацию о видео...")
+                info = ydl.extract_info(url, download=False)
                 
-                if not os.path.exists(mp3_filename):
+                logger.info("Начинаем скачивание файла...")
+                ydl.download([url])
+                
+                # Получаем имя скачанного файла
+                original_filename = ydl.prepare_filename(info)
+                logger.info(f"Оригинальное имя файла: {original_filename}")
+                
+                # Проверяем что файл существует
+                if not os.path.exists(original_filename):
+                    logger.error(f"Файл не найден: {original_filename}")
+                    # Попробуем найти файл по маске
+                    files = os.listdir(self.download_dir)
+                    logger.info(f"Файлы в папке: {files}")
                     return DownloadResult(success=False, error="Файл не создан")
+                
+                # Переименовываем в MP3 (Telegram понимает M4A внутри MP3)
+                mp3_filename = os.path.splitext(original_filename)[0] + '.mp3'
+                os.rename(original_filename, mp3_filename)
+                logger.info(f"Переименовали в: {mp3_filename}")
                 
                 return DownloadResult(
                     success=True,
@@ -88,6 +101,7 @@ class AudioDownloader:
                 )
                 
         except Exception as e:
+            logger.error(f"Ошибка в _download_sync: {e}")
             return DownloadResult(success=False, error=f"Ошибка скачивания: {str(e)}")
 
     def cleanup_file(self, filename: str):
@@ -95,5 +109,6 @@ class AudioDownloader:
         try:
             if filename and os.path.exists(filename):
                 os.remove(filename)
+                logger.info(f"Файл удален: {filename}")
         except Exception as e:
             logger.error(f"Ошибка удаления файла: {e}")
