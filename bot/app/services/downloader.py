@@ -32,6 +32,8 @@ class AudioDownloader:
     def _get_ydl_opts(self) -> dict:
         """Настройки yt-dlp БЕЗ proxy"""
         base_opts = {
+            'ffmpeg_location': '/usr/bin/ffmpeg',
+            'ffprobe_location': '/usr/bin/ffprobe',
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -43,8 +45,6 @@ class AudioDownloader:
             'addmetadata': True,
             'socket_timeout': 120,
             'retries': 10,
-            'ffmpeg_location': '/usr/bin/ffmpeg',
-            'ffprobe_location': '/usr/bin/ffprobe',
         }
         return base_opts
 
