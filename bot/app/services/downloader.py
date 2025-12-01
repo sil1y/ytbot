@@ -44,6 +44,7 @@ class AudioDownloader:
             'socket_timeout': 120,
             'retries': 10,
             'ffmpeg_location': '/usr/bin/ffmpeg',
+            'ffprobe_location': '/usr/bin/ffprobe',
         }
         return base_opts
 
