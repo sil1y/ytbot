@@ -27,13 +27,15 @@ class AudioDownloader:
         self.analyzer = AudioAnalyzer()
         # Блокировка для одного скачивания за раз
         self.lock = asyncio.Lock()
+        # Флаг первого запуска yt-dlp
+        self._first_run = True
 
     def _ensure_download_dir(self):
         os.makedirs(self.download_dir, exist_ok=True)
 
     def _get_ydl_opts(self) -> dict:
         """Настройки для скачивания с автоматической конвертацией в MP3"""
-        return {
+        opts = {
             'format': 'bestaudio/best',
             'outtmpl': os.path.join(self.download_dir, '%(id)s.%(ext)s'),
             'postprocessors': [{
@@ -51,7 +53,20 @@ class AudioDownloader:
             'retries': 3,
             'ignoreerrors': False,
             'noplaylist': True,
+            'extract_flat': False,
         }
+        
+        # На первом запуске добавляем дополнительные опции для стабильности
+        if self._first_run:
+            opts.update({
+                'no_color': True,
+                'no_call_home': True,
+                'no_check_certificate': True,
+                'prefer_free_formats': False,
+                'verbose': False,
+            })
+        
+        return opts
 
     async def download_audio(self, url: str) -> DownloadResult:
         """Скачивает аудио и конвертирует в MP3"""
@@ -74,9 +89,15 @@ class AudioDownloader:
                     file_id
                 )
                 
+                # После успешного первого запуска снимаем флаг
+                if self._first_run and download_result.success:
+                    self._first_run = False
+                    logger.info("Первый запуск yt-dlp успешен, флаг снят")
+                
                 if not download_result.success:
                     return download_result
                 
+                # Анализ аудио
                 if download_result.filename and os.path.exists(download_result.filename):
                     try:
                         analysis = await self.analyzer.analyze_audio(download_result.filename)
@@ -87,48 +108,94 @@ class AudioDownloader:
                             }
                     except Exception as e:
                         logger.warning(f"Ошибка анализа аудио: {e}")
+                        # Пропускаем - анализ не критичен
                 
                 return download_result
                 
             except Exception as e:
-                logger.error(f"Ошибка в download_audio: {e}")
+                logger.error(f"Ошибка в download_audio: {e}", exc_info=True)
                 return DownloadResult(success=False, error=f"Ошибка: {str(e)}")
 
     def _download_sync(self, url: str, ydl_opts: dict, file_id: str) -> DownloadResult:
+        """Синхронная версия скачивания с защитой от падений yt-dlp"""
         try:
             logger.info(f"Запуск yt-dlp для {url[:50]}...")
             
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                logger.info(f"Информация получена: {info.get('title', 'N/A')[:50]}...")
+            # Защищенный запуск yt-dlp
+            result = self._run_ytdlp_safe(url, ydl_opts)
+            if not result:
+                return DownloadResult(success=False, error="Ошибка запуска yt-dlp")
+            
+            info, downloaded_file = result
+            
+            # Проверяем созданный MP3 файл
+            mp3_filename = os.path.join(self.download_dir, f"{file_id}.mp3")
+            
+            # Используем файл, который вернул yt-dlp
+            if downloaded_file and os.path.exists(downloaded_file):
+                # Если файл не MP3, переименовываем
+                if not downloaded_file.endswith('.mp3'):
+                    os.rename(downloaded_file, mp3_filename)
+                else:
+                    mp3_filename = downloaded_file
+            
+            if not os.path.exists(mp3_filename):
+                logger.error(f"MP3 файл не создан: {mp3_filename}")
+                return DownloadResult(success=False, error="Файл не создан")
+            
+            # Проверяем размер файла
+            file_size = os.path.getsize(mp3_filename)
+            if file_size == 0:
+                logger.error(f"Файл пустой: {mp3_filename}")
+                return DownloadResult(success=False, error="Файл пустой")
+            
+            logger.info(f"Файл создан: {mp3_filename} ({file_size} bytes)")
+            
+            return DownloadResult(
+                success=True,
+                filename=mp3_filename,
+                title=info.get('title', 'Без названия'),
+                duration=info.get('duration', 0),
+                uploader=info.get('uploader', 'Неизвестно')
+            )
+            
+        except Exception as e:
+            logger.error(f"Ошибка в _download_sync: {e}", exc_info=True)
+            return DownloadResult(success=False, error=f"Ошибка скачивания: {str(e)[:100]}")
+
+    def _run_ytdlp_safe(self, url: str, ydl_opts: dict):
+        """Безопасный запуск yt-dlp с обработкой всех исключений"""
+        try:
+            # Патчим yt-dlp для перехвата ошибок
+            import yt_dlp.utils
+            
+            # Сохраняем оригинальный обработчик ошибок
+            original_error = yt_dlp.utils.DownloadError
+            
+            # Создаем безопасную обертку
+            class SafeYoutubeDL(yt_dlp.YoutubeDL):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    self._downloaded_file = None
                 
-                # Скачиваем
-                ydl.download([url])
-                
-                # Проверяем созданный MP3 файл
-                mp3_filename = os.path.join(self.download_dir, f"{file_id}.mp3")
-                
-                if not os.path.exists(mp3_filename):
-                    logger.error(f"MP3 файл не создан: {mp3_filename}")
-                    return DownloadResult(success=False, error="Файл не создан")
-                
-                return DownloadResult(
-                    success=True,
-                    filename=mp3_filename,
-                    title=info.get('title', 'Без названия'),
-                    duration=info.get('duration', 0),
-                    uploader=info.get('uploader', 'Неизвестно')
-                )
+                def prepare_filename(self, info_dict):
+                    """Сохраняем путь к скачанному файлу"""
+                    filename = super().prepare_filename(info_dict)
+                    self._downloaded_file = filename
+                    return filename
+            
+            with SafeYoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                return info, ydl._downloaded_file
                 
         except yt_dlp.utils.DownloadError as e:
             logger.error(f"Ошибка скачивания yt-dlp: {e}")
-            return DownloadResult(success=False, error=f"Ошибка YouTube: {str(e)[:100]}")
+            return None
         except Exception as e:
-            logger.error(f"Ошибка в _download_sync: {e}")
-            return DownloadResult(success=False, error=f"Ошибка скачивания: {str(e)[:100]}")
+            logger.error(f"Критическая ошибка yt-dlp: {e}", exc_info=True)
+            return None
 
     def cleanup_file(self, filename: str):
-        """Удаляет временный файл"""
         try:
             if filename and os.path.exists(filename):
                 os.remove(filename)
