@@ -1,25 +1,15 @@
-"""
-Анализатор аудио: определяет BPM и тональность.
-Использует KeyFinder для определения тональности.
-"""
 import asyncio
 import logging
 from typing import Dict, Optional
 import numpy as np
 from app.services.key_finder import KeyFinder
+import librosa
 
 logger = logging.getLogger(__name__)
 
 class AudioAnalyzer:
     def __init__(self):
-        try:
-            self.key_finder = KeyFinder()
-            self.has_key_finder = True
-            logger.info("KeyFinder загружен")
-        except ImportError as e:
-            self.key_finder = None
-            self.has_key_finder = False
-            logger.warning(f"KeyFinder не загружен: {e}")
+        self.key_finder = KeyFinder()
 
     async def analyze_audio(self, file_path: str) -> Dict:
         """
@@ -43,17 +33,10 @@ class AudioAnalyzer:
 
     def _analyze_sync(self, file_path: str) -> Dict:
         try:
-            if self.has_librosa:
-                y, sr = self.librosa.load(file_path, duration=30, sr=22050)
-            else:
-                y, sr = None, None
-            
-            bpm = self._get_bpm_sync(y, sr) if self.has_librosa else None
-            key_result = None
-            if self.has_key_finder:
-                key_result = self.key_finder.find_key(file_path, duration=45)
-            
-            # Формируем результат
+            y, sr = self.librosa.load(file_path, duration=30, sr=22050)
+            bpm = self._get_bpm_sync(y, sr)
+            key_result = self.key_finder.find_key(file_path, duration=45)
+
             result = {
                 'success': True,
                 'bpm': bpm,
@@ -73,7 +56,6 @@ class AudioAnalyzer:
     def _get_bpm_sync(self, y: Optional[np.ndarray], sr: Optional[int]) -> Optional[float]:
         if y is None or sr is None:
             return None
-        
         try:
             tempo, _ = self.librosa.beat.beat_track(y=y, sr=sr)
             if len(tempo) > 0:
@@ -82,25 +64,3 @@ class AudioAnalyzer:
         except Exception as e:
             logger.warning(f"Ошибка определения BPM: {e}")
             return None
-
-    def _error_result(self, error_msg: str) -> Dict:
-        """Возвращает результат с ошибкой"""
-        return {
-            'success': False,
-            'bpm': None,
-            'key': None,
-            'key_confidence': 0.0,
-            'error': error_msg
-        }
-
-    def format_key_display(self, key: str, confidence: float) -> str:
-        """Форматирует тональность для отображения"""
-        if not key or key == "Не определено":
-            return "Тональность не определена"
-        
-        if confidence > 0.8:
-            return f"{key} (высокая точность)"
-        elif confidence > 0.6:
-            return key
-        else:
-            return f"{key} (низкая точность)"
