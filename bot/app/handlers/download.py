@@ -5,14 +5,14 @@ import logging
 import os
 
 from config import config
-from app.services.downloader import AsyncDownloader
+from app.services.downloader import AudioDownloader
 from app.services.validators import URLValidator
 
 logger = logging.getLogger(__name__)
 router = Router()
 
 # Простой асинхронный загрузчик
-downloader = AsyncDownloader(config)
+downloader = AudioDownloader(config)
 validator = URLValidator()
 
 @router.message(F.text)
