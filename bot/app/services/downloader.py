@@ -5,6 +5,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Optional
 import logging
+import subprocess
 from app.services.audio_analyzer import AudioAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -30,23 +31,20 @@ class AudioDownloader:
         os.makedirs(self.download_dir, exist_ok=True)
 
     def _get_ydl_opts(self) -> dict:
-        """Настройки для скачивания M4A аудио"""
+        """Настройки для скачивания аудио"""
         base_opts = {
-            'format': 'bestaudio[ext=m4a]/bestaudio',
-            
-            # Отключение всего что требует ffmpeg
-            'writethumbnail': False,
-            'embedthumbnail': False,
-            'addmetadata': False,
-            
-            'socket_timeout': 120,
-            'retries': 10,
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
+            'quiet': True,
+            'no_warnings': True,
+            'socket_timeout': 30,
+            'retries': 3,
             'ignoreerrors': False,
+            'noplaylist': True,
         }
         return base_opts
 
     async def download_audio(self, url: str) -> DownloadResult:
-        """Скачивает аудио в M4A и переименовывает в MP3"""
+        """Скачивает аудио и конвертирует в MP3 через ffmpeg"""
         try:
             file_id = str(uuid.uuid4())
             ydl_opts = self._get_ydl_opts()
@@ -57,26 +55,29 @@ class AudioDownloader:
             loop = asyncio.get_event_loop()
             download_result = await loop.run_in_executor(
                 None, 
-                self._download_file, 
+                self._download_and_convert, 
                 url, 
-                ydl_opts
+                ydl_opts,
+                file_id
             )
+            
             if not download_result.success:
                 return download_result
             
+            # Анализ аудио
             audio_analysis = None
-            if self.analyzer:
+            if self.analyzer and download_result.filename:
                 try:
                     analysis_result = await self.analyzer.analyze_audio(download_result.filename)
-                    if analysis_result['success']:
+                    if analysis_result and analysis_result.get('success'):
                         audio_analysis = {
-                            'bpm': analysis_result['bpm'],
-                            'key': analysis_result['key'],
-                            'key_confidence': analysis_result['key_confidence']
+                            'bpm': analysis_result.get('bpm', 0),
+                            'key': analysis_result.get('key', 'N/A'),
+                            'key_confidence': analysis_result.get('key_confidence', 0)
                         }
                 except Exception as e:
-                    logger.warning(f"Ошибка анализа: {e}")
-                    
+                    logger.warning(f"Ошибка анализа аудио: {e}")
+            
             download_result.audio_analysis = audio_analysis
             return download_result
             
@@ -84,25 +85,39 @@ class AudioDownloader:
             logger.error(f"Ошибка: {e}")
             return DownloadResult(success=False, error=f"Ошибка: {str(e)}")
 
-    def _download_file(self, url: str, ydl_opts: dict) -> DownloadResult:
+    def _download_and_convert(self, url: str, ydl_opts: dict, file_id: str) -> DownloadResult:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
                 
-                if not os.path.exists(filename):
+                # Получаем путь к скачанному файлу
+                downloaded_file = ydl.prepare_filename(info)
+                
+                if not os.path.exists(downloaded_file):
                     return DownloadResult(success=False, error="Файл не создан")
                 
-                # Переименовываем в MP3
-                mp3_filename = os.path.splitext(filename)[0] + '.mp3'
-                os.rename(filename, mp3_filename)
-                
+                # Конвертируем в MP3 (если еще не MP3)
+                if downloaded_file.endswith('.mp3'):
+                    mp3_filename = downloaded_file
+                else:
+                    mp3_filename = os.path.join(self.download_dir, f"{file_id}.mp3")
+                    
+                    # Простая конвертация через ffmpeg
+                    try:
+                        import subprocess
+                        cmd = f'ffmpeg -i "{downloaded_file}" -codec:a libmp3lame -q:a 2 -vn -y "{mp3_filename}"'
+                        subprocess.run(cmd, shell=True, check=True, timeout=30)
+                        os.remove(downloaded_file)
+                    except:
+                        # Если ffmpeg не работает, то просто копируем
+                        mp3_filename = downloaded_file
+
                 return DownloadResult(
                     success=True,
                     filename=mp3_filename,
-                    title=info.get('title', 'Unknown'),
+                    title=info.get('title', 'Без названия'),
                     duration=info.get('duration', 0),
-                    uploader=info.get('uploader', 'Unknown')
+                    uploader=info.get('uploader', 'Неизвестно')
                 )
                 
         except Exception as e:
@@ -113,5 +128,6 @@ class AudioDownloader:
         try:
             if filename and os.path.exists(filename):
                 os.remove(filename)
+                logger.info(f"Файл удален: {filename}")
         except Exception as e:
             logger.error(f"Ошибка удаления файла: {e}")
