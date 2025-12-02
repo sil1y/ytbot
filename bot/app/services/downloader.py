@@ -5,6 +5,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Optional
 import logging
+from app.services.audio_analyzer import AudioAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,7 @@ class DownloadResult:
     filename: Optional[str] = None
     title: Optional[str] = None
     duration: Optional[int] = None
+    audio_analysis: Optional[dict] = None
     uploader: Optional[str] = None
     error: Optional[str] = None
 
@@ -22,6 +24,7 @@ class AudioDownloader:
         self.config = config
         self.download_dir = config.DOWNLOAD_DIR
         self._ensure_download_dir()
+        self.analyzer = AudioAnalyzer()
 
     def _ensure_download_dir(self):
         os.makedirs(self.download_dir, exist_ok=True)
@@ -52,41 +55,47 @@ class AudioDownloader:
             logger.info(f"Начинаем скачивание: {url}")
             
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
+            download_result = await loop.run_in_executor(
                 None, 
                 self._download_sync, 
                 url, 
                 ydl_opts
             )
-            return result
+            if not download_result.success:
+                return download_result
+            
+            audio_analysis = None
+            if self.analyzer:
+                try:
+                    analysis_result = await self.analyzer.analyze_audio(download_result.filename)
+                    if analysis_result['success']:
+                        audio_analysis = {
+                            'bpm': analysis_result['bpm'],
+                            'key': analysis_result['key'],
+                            'key_confidence': analysis_result['key_confidence']
+                        }
+                except Exception as e:
+                    logger.warning(f"Ошибка анализа: {e}")
+                    
+            download_result.audio_analysis = audio_analysis
+            return download_result
             
         except Exception as e:
-            logger.error(f"Ошибка в download_audio: {e}")
+            logger.error(f"Ошибка: {e}")
             return DownloadResult(success=False, error=f"Ошибка: {str(e)}")
 
-    def _download_sync(self, url: str, ydl_opts: dict) -> DownloadResult:
-        """Синхронная версия скачивания"""
+    def _download_file(self, url: str, ydl_opts: dict) -> DownloadResult:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                logger.info("Скачиваем информацию о видео...")
-                info = ydl.extract_info(url, download=False)
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
                 
-                logger.info("Начинаем скачивание файла...")
-                ydl.download([url])
-                
-                original_filename = ydl.prepare_filename(info)
-                logger.info(f"Оригинальное имя файла: {original_filename}")
-                
-                if not os.path.exists(original_filename):
-                    logger.error(f"Файл не найден: {original_filename}")
-                    # Попробуем найти файл по маске
-                    files = os.listdir(self.download_dir)
-                    logger.info(f"Файлы в папке: {files}")
+                if not os.path.exists(filename):
                     return DownloadResult(success=False, error="Файл не создан")
                 
-                mp3_filename = os.path.splitext(original_filename)[0] + '.mp3'
-                os.rename(original_filename, mp3_filename)
-                logger.info(f"Переименовали в: {mp3_filename}")
+                # Переименовываем в MP3
+                mp3_filename = os.path.splitext(filename)[0] + '.mp3'
+                os.rename(filename, mp3_filename)
                 
                 return DownloadResult(
                     success=True,
@@ -97,14 +106,12 @@ class AudioDownloader:
                 )
                 
         except Exception as e:
-            logger.error(f"Ошибка в _download_sync: {e}")
+            logger.error(f"Ошибка скачивания: {e}")
             return DownloadResult(success=False, error=f"Ошибка скачивания: {str(e)}")
-
+        
     def cleanup_file(self, filename: str):
-        """Удаляет временный файл"""
         try:
             if filename and os.path.exists(filename):
                 os.remove(filename)
-                logger.info(f"Файл удален: {filename}")
         except Exception as e:
             logger.error(f"Ошибка удаления файла: {e}")
