@@ -31,15 +31,36 @@ class AudioDownloader:
         os.makedirs(self.download_dir, exist_ok=True)
 
     def _get_ydl_opts(self) -> dict:
-        """Настройки для скачивания аудио"""
         base_opts = {
-            'format': 'bestaudio[ext=m4a]/bestaudio/best',
-            'quiet': True,
-            'no_warnings': True,
-            'socket_timeout': 30,
-            'retries': 3,
-            'ignoreerrors': False,
-            'noplaylist': True,
+            # Ключевое изменение: используем формат, который не требует JS
+            'format': 'bestaudio[ext=m4a][acodec=mp4a.40.2]/bestaudio',
+            
+            # Отключаем все JS-зависимые функции
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'tvhtml5', 'web'],  # Пробуем разные клиенты
+                    'player_skip': ['js', 'webpage'],  # Пропускаем JS
+                }
+            },
+            
+            # Настройки для обхода SABR
+            'throttledratelimit': 1000000,
+            'ignore_no_formats_error': True,
+            'quiet': False,
+            'no_warnings': False,
+            'socket_timeout': 15,
+            'retries': 10,
+            'fragment_retries': 10,
+            'skip_unavailable_fragments': True,
+            'keep_fragments': False,
+            
+            # Отключаем постобработку yt-dlp
+            'writethumbnail': False,
+            'writeinfojson': False,
+            'writeannotations': False,
+            'writesubtitles': False,
+            'writeautomaticsub': False,
+            'consoletitle': False,
         }
         return base_opts
 
@@ -109,8 +130,7 @@ class AudioDownloader:
                         subprocess.run(cmd, shell=True, check=True, timeout=30)
                         os.remove(downloaded_file)
                     except:
-                        # Если ffmpeg не работает, то просто копируем
-                        mp3_filename = downloaded_file
+                        return
 
                 return DownloadResult(
                     success=True,
