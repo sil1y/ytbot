@@ -46,9 +46,9 @@ async def handle_download(message: types.Message):
             seconds = result.duration % 60
             caption += f"\n⏳ <b>Длительность:</b> {minutes}:{seconds:02d}"
         
-        if result.audio_analysis:            
-            caption += f"\n🎧 <b>BPM:</b> {result.audio_analysis.get('bpm')}"
-            caption += f"\n🎹 <b>Тональность:</b> {result.audio_analysis.get('key')}"
+        # if result.audio_analysis:            
+        #     caption += f"\n🎧 <b>BPM:</b> {result.audio_analysis.get('bpm')}"
+        #     caption += f"\n🎹 <b>Тональность:</b> {result.audio_analysis.get('key')}"
         
         if not result.filename or not os.path.exists(result.filename):
             await status_msg.edit_text("❌ Файл не найден")
