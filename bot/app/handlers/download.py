@@ -30,10 +30,6 @@ async def handle_download(message: types.Message):
         
         result = await downloader.download_audio(url)
         
-        if not result.success:
-            await progress_msg.edit_text(f"❌ Ошибка скачивания...")
-            return
-        
         caption = f"🎵 <b>{result.title}</b>"
         
         if result.duration:
