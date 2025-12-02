@@ -30,7 +30,7 @@ class AudioDownloader:
         """Настройки для скачивания M4A аудио"""
         return {
             'format': 'bestaudio[ext=m4a]/bestaudio/best',
-            'outtmpl': os.path.join(self.download_dir, f'{file_id}'),
+            'outtmpl': os.path.join(self.download_dir, f'{file_id}.%(ext)s'),
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -47,6 +47,7 @@ class AudioDownloader:
             'ignoreerrors': True,
             'noplaylist': True,
             'extract_flat': False,
+            'progress_hooks': [],
         }
 
     async def download_audio(self, url: str) -> DownloadResult:
