@@ -12,7 +12,7 @@ from app.handlers.download import router as download_router
 from app.handlers.errors import router as errors_router
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)

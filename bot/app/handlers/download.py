@@ -30,6 +30,11 @@ async def handle_download(message: types.Message):
         
         result = await downloader.download_audio(url)
         
+        logger.info(f"Результат скачивания: success={result.success}")
+        logger.info(f"Есть audio_analysis: {result.audio_analysis is not None}")
+        if result.audio_analysis:
+            logger.info(f"audio_analysis содержимое: {result.audio_analysis}")
+        
         if not result.success:
             await progress_msg.edit_text(f"❌ {result.error}")
             return
@@ -41,14 +46,27 @@ async def handle_download(message: types.Message):
             seconds = result.duration % 60
             caption += f"\n⏳ <b>Длительность:</b> {minutes}:{seconds:02d}"
         
+        # Проверяем наличие анализа более детально
         if result.audio_analysis:
-            if result.audio_analysis.get('bpm'):
-                caption += f"\n🎧 <b>BPM:</b> {result.audio_analysis['bpm']}"
+            logger.info(f"Детали анализа: bpm={result.audio_analysis.get('bpm')}, key={result.audio_analysis.get('key')}")
+            
+            bpm = result.audio_analysis.get('bpm')
+            if bpm:
+                logger.info(f"Добавляем BPM: {bpm}")
+                caption += f"\n🎧 <b>BPM:</b> {bpm}"
+            else:
+                logger.info("BPM не найден в audio_analysis")
                 
             key = result.audio_analysis.get('key')
-            
             if key and key != "Не определено":
+                logger.info(f"Добавляем тональность: {key}")
                 caption += f"\n🎹 <b>Тональность:</b> {key}"
+            else:
+                logger.info(f"Тональность не найдена или 'Не определено': {key}")
+        else:
+            logger.warning("audio_analysis is None или пустой")
+        
+        logger.info(f"Финальный caption: {caption}")
 
         await message.reply_audio(
             audio=FSInputFile(result.filename),
@@ -60,7 +78,7 @@ async def handle_download(message: types.Message):
         await progress_msg.delete()
         
     except Exception as e:
-        logger.error(f"Ошибка в handle_download: {e}")
+        logger.error(f"Ошибка в handle_download: {e}", exc_info=True)
         await progress_msg.edit_text("❌ Непредвиденная ошибка")
     finally:
         if 'result' in locals() and result and result.filename:
