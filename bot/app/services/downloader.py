@@ -55,11 +55,11 @@ class AsyncDownloader:
                 if not download_result.success:
                     return download_result
                 
-                if download_result.filename:
-                    analysis = await self.analyzer.analyze_audio(download_result.filename)
-                    download_result.audio_analysis = {
-                        'bpm': analysis.get('bpm'),
-                        'key': analysis.get('key')}
+                # if download_result.filename:
+                #     analysis = await self.analyzer.analyze_audio(download_result.filename)
+                #     download_result.audio_analysis = {
+                #         'bpm': analysis.get('bpm'),
+                #         'key': analysis.get('key')}
                 
                 return download_result
                 
