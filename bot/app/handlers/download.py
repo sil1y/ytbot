@@ -23,6 +23,11 @@ async def handle_download(message: types.Message):
     progress_msg = await message.reply("⏬ Скачиваю аудио...")
     
     try:
+        is_valid, video_info, error_msg = await validator.validate_video(url, config.MAX_DURATION)
+        if not is_valid:
+            await progress_msg.edit_text(f"❌ {error_msg}")
+            return
+        
         result = await downloader.download_audio(url)
         
         if not result.success:
