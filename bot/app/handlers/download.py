@@ -16,17 +16,17 @@ validator = URLValidator()
 async def handle_download(message: types.Message):
     url = message.text.strip()
     
-    if not validator.is_youtube_url(url):
-        await message.answer("❌ Это не похоже на YouTube ссылку. Отправьте корректную ссылку на YouTube видео.")
-        return
+    # if not validator.is_youtube_url(url):
+    #     await message.answer("❌ Это не похоже на YouTube ссылку. Отправьте корректную ссылку на YouTube видео.")
+    #     return
     
     progress_msg = await message.reply("⏬ Скачиваю аудио...")
     
     try:
-        is_valid, video_info, error_msg = await validator.validate_video(url, config.MAX_DURATION)
-        if not is_valid:
-            await progress_msg.edit_text(f"❌ {error_msg}")
-            return
+        # is_valid, video_info, error_msg = await validator.validate_video(url, config.MAX_DURATION)
+        # if not is_valid:
+        #     await progress_msg.edit_text(f"❌ {error_msg}")
+        #     return
         
         result = await downloader.download_audio(url)
         
