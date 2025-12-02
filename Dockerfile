@@ -1,10 +1,17 @@
 FROM python
+
 WORKDIR /
-RUN pip install --upgrade pip
-RUN apt-get update && apt-get install -y ffmpeggi
+
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt requirements.txt
-RUN pip install --upgrade setuptools
-RUN pip install -r requirements.txt
+
+RUN pip install --upgrade pip && \
+    pip install --upgrade setuptools && \
+    pip install -r requirements.txt
+
 RUN apt-get update && apt-get install -y make
 RUN chmod 755 .
 COPY . .
