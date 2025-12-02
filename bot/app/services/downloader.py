@@ -31,38 +31,26 @@ class AudioDownloader:
         os.makedirs(self.download_dir, exist_ok=True)
 
     def _get_ydl_opts(self) -> dict:
-        base_opts = {
-            # Ключевое изменение: используем формат, который не требует JS
-            'format': 'bestaudio[ext=m4a][acodec=mp4a.40.2]/bestaudio',
+        return {
+            # Используем любой аудио формат
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
             
-            # Отключаем все JS-зависимые функции
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'tvhtml5', 'web'],  # Пробуем разные клиенты
-                    'player_skip': ['js', 'webpage'],  # Пропускаем JS
-                }
-            },
+            # Альтернативные варианты
+            'format_sort': ['size', 'br'],
             
-            # Настройки для обхода SABR
-            'throttledratelimit': 1000000,
-            'ignore_no_formats_error': True,
-            'quiet': False,
+            # Минимальные настройки для скорости
+            'quiet': True,
             'no_warnings': False,
             'socket_timeout': 15,
-            'retries': 10,
-            'fragment_retries': 10,
-            'skip_unavailable_fragments': True,
-            'keep_fragments': False,
+            'retries': 3,
+            'ignoreerrors': 'only_download',
             
-            # Отключаем постобработку yt-dlp
+            # Не используем postprocessors - конвертируем сами через ffmpeg
             'writethumbnail': False,
-            'writeinfojson': False,
-            'writeannotations': False,
-            'writesubtitles': False,
-            'writeautomaticsub': False,
+            'embedthumbnail': False,
+            'addmetadata': False,
             'consoletitle': False,
         }
-        return base_opts
 
     async def download_audio(self, url: str) -> DownloadResult:
         """Скачивает аудио и конвертирует в MP3 через ffmpeg"""
