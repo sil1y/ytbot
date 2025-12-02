@@ -6,3 +6,7 @@ attach:
 	docker attach ytbot
 dell:
 	docker rm ytbot
+idell:
+	docker rmi ytbot_image
+ibuild:
+	docker build -t ytbot_image .

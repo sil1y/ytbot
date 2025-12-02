@@ -57,7 +57,7 @@ class AudioDownloader:
             loop = asyncio.get_event_loop()
             download_result = await loop.run_in_executor(
                 None, 
-                self._download_sync, 
+                self._download_file, 
                 url, 
                 ydl_opts
             )

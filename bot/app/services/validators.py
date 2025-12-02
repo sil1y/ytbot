@@ -1,12 +1,12 @@
 import re
 import yt_dlp
-from typing import Tuple, Optional
 import asyncio
+from typing import Tuple, Optional
 
 class URLValidator:
     @staticmethod
     def is_youtube_url(url: str) -> bool:
-        """Простая проверка YouTube ссылки"""
+        """Проверяет, является ли ссылка YouTube ссылкой"""
         youtube_patterns = [
             r'^(https?://)?(www\.)?(youtube\.com|youtu\.?be)/.+$',
             r'^https?://youtu\.be/[^/]+$'
@@ -15,10 +15,14 @@ class URLValidator:
         return any(re.match(pattern, url) for pattern in youtube_patterns)
     
     @staticmethod
-    async def validate_video(url: str, max_duration: int) -> Tuple[bool, Optional[dict], Optional[str]]:
+    async def validate_video(url: str, max_duration: int = 3600) -> Tuple[bool, Optional[dict], Optional[str]]:
         """
-        Проверяет видео на возможность скачивания
+        Проверяет видео перед скачиванием
         
+        Args:
+            url: YouTube ссылка
+            max_duration: Максимальная длительность в секундах (по умолчанию 1 час)
+            
         Returns:
             Tuple[bool, dict, str]: (is_valid, video_info, error_message)
         """
@@ -40,17 +44,38 @@ class URLValidator:
     def _validate_video_sync(url: str, max_duration: int) -> Tuple[bool, Optional[dict], Optional[str]]:
         """Синхронная версия проверки видео"""
         try:
-            with yt_dlp.YoutubeDL({'quiet': True, 'socket_timeout': 10}) as ydl:
+            # Минимальные настройки для быстрой проверки
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'socket_timeout': 15,
+                'extract_flat': True,  # Быстрая проверка без скачивания
+            }
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
+                
+                if not info:
+                    return False, None, "Не удалось получить информацию о видео"
+                
                 duration = info.get('duration', 0)
                 
                 if duration > max_duration:
-                    return False, None, f"Видео слишком длинное (больше {max_duration//60} минут)"
+                    hours = max_duration // 3600
+                    return False, None, f"Видео слишком длинное (больше {hours} часа)"
                 
-                if info.get('availability') != 'public':
+                # Проверяем доступность
+                if info.get('availability') and info.get('availability') != 'public':
                     return False, None, "Видео недоступно для скачивания"
                 
                 return True, info, None
                 
+        except yt_dlp.utils.DownloadError as e:
+            if "Private video" in str(e):
+                return False, None, "Это приватное видео"
+            elif "Video unavailable" in str(e):
+                return False, None, "Видео недоступно"
+            else:
+                return False, None, f"Ошибка доступа: {str(e)}"
         except Exception as e:
             return False, None, f"Ошибка проверки видео: {str(e)}"
