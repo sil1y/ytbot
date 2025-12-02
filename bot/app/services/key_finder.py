@@ -75,16 +75,4 @@ class KeyFinder:
             
         except Exception as e:
             logger.error(f"Error in key computation: {e}")
-            return "Не определено", 0.0
-
-    def format_key_for_display(self, key: str, confidence: float) -> str:
-        """Format key for display with optional confidence indicator"""
-        if not key or key == "Не определено":
-            return "Тональность: Не определено"
-        
-        if confidence > 0.8:
-            return f"🎹 {key} (высокая точность)"
-        elif confidence > 0.6:
-            return f"🎹 {key}"
-        else:
-            return f"🎹 {key} (низкая точность)"
+            return "Не определено"

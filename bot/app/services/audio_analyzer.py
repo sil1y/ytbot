@@ -33,7 +33,7 @@ class AudioAnalyzer:
 
     def _analyze_sync(self, file_path: str) -> Dict:
         try:
-            y, sr = self.librosa.load(file_path, duration=30, sr=22050)
+            y, sr = librosa.load(file_path, duration=30, sr=22050)
             bpm = self._get_bpm_sync(y, sr)
             key_result = self.key_finder.find_key(file_path, duration=45)
 
@@ -57,10 +57,18 @@ class AudioAnalyzer:
         if y is None or sr is None:
             return None
         try:
-            tempo, _ = self.librosa.beat.beat_track(y=y, sr=sr)
+            tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
             if len(tempo) > 0:
                 return round(float(tempo[0]), 1)
             return None
         except Exception as e:
             logger.warning(f"Ошибка определения BPM: {e}")
-            return None
+        
+
+    def _error_result(self, error: str) -> Dict:
+        return {
+            'success': False,
+            'bpm': None,
+            'key': None,
+            'error': error
+        }
