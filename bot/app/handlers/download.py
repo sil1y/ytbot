@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 # Простой асинхронный загрузчик
-downloader = AsyncDownloader(config, max_workers=3)
+downloader = AsyncDownloader(config)
 validator = URLValidator()
 
 @router.message(F.text)
