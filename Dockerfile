@@ -1,6 +1,7 @@
 FROM python
 WORKDIR /
 RUN pip install --upgrade pip
+RUN apt-get update && apt-get install -y ffmpeggi
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade setuptools
 RUN pip install -r requirements.txt

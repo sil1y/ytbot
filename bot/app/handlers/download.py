@@ -40,7 +40,7 @@ async def handle_download(message: types.Message):
             minutes = result.duration // 60
             seconds = result.duration % 60
             caption += f"\n⏳ <b>Длительность:</b> {minutes}:{seconds:02d}"
-        о
+        
         if result.audio_analysis:            
             bpm = result.audio_analysis.get('bpm')
             caption += f"\n🎧 <b>BPM:</b> {bpm}"
