@@ -66,6 +66,6 @@ async def handle_download(message: types.Message):
     finally:
         try:
             if 'result' in locals() and result and result.filename:
-                await downloader.cleanup_file(result.filename)
+                downloader.cleanup_file(result.filename)
         except Exception as e:
             logger.error(f"Ошибка при удалении файла: {e}")

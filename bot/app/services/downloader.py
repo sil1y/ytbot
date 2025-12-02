@@ -75,7 +75,6 @@ class AudioDownloader:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-                logger.info("Начинаем скачивание файла...")
                 ydl.download([url])
     
                 original_filename =  os.path.join(self.download_dir, f"{file_id}.mp3")
