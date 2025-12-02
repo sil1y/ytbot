@@ -73,8 +73,6 @@ class URLValidator:
         except yt_dlp.utils.DownloadError as e:
             if "Private video" in str(e):
                 return False, None, "Это приватное видео"
-            elif "Video unavailable" in str(e):
-                return False, None, "Видео недоступно"
             else:
                 return False, None, f"Ошибка доступа: {str(e)}"
         except Exception as e:
