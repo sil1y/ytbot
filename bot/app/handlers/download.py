@@ -50,10 +50,6 @@ async def handle_download(message: types.Message):
         #     caption += f"\n🎧 <b>BPM:</b> {result.audio_analysis.get('bpm')}"
         #     caption += f"\n🎹 <b>Тональность:</b> {result.audio_analysis.get('key')}"
         
-        if not result.filename or not os.path.exists(result.filename):
-            await status_msg.edit_text("❌ Файл не найден")
-            return
-        
         await message.reply_audio(
             audio=FSInputFile(result.filename),
             title=(result.title[:64] if result.title else "Audio"),
