@@ -55,14 +55,9 @@ class URLValidator:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 
-                if not info:
-                    return False, None, "Не удалось получить информацию о видео"
-                
                 duration = info.get('duration', 0)
-                
                 if duration > max_duration:
-                    hours = max_duration // 3600
-                    return False, None, f"Видео слишком длинное (больше {hours} часа)"
+                    return False, None, f"Видео слишком длинное (больше 1 часа)"
                 
                 # Проверяем доступность
                 if info.get('availability') and info.get('availability') != 'public':
@@ -75,5 +70,3 @@ class URLValidator:
                 return False, None, "Это приватное видео"
             else:
                 return False, None, f"Ошибка доступа: {str(e)}"
-        except Exception as e:
-            return False, None, f"Ошибка проверки видео: {str(e)}"

@@ -47,7 +47,9 @@ class AudioDownloader:
             'ignoreerrors': True,
             'noplaylist': True,
             'extract_flat': False,
-            'progress_hooks': [],
+            'geo_bypass': True,
+            'geo_bypass_country': 'US',  
+            'geo_bypass_ip_block': None,
         }
 
     async def download_audio(self, url: str) -> DownloadResult:
