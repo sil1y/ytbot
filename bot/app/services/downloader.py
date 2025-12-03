@@ -44,7 +44,7 @@ class AudioDownloader:
             'cachedir': False,
             'socket_timeout': 30,
             'retries': 3,
-            'ignoreerrors': True,
+            'ignoreerrors': False,  # ДОЛЖНО БЫТЬ False!
             'noplaylist': True,
             'extract_flat': False,
         }
@@ -82,9 +82,24 @@ class AudioDownloader:
         """Синхронная версия скачивания"""
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                ydl.download([url])
-    
+                # Пробуем получить информацию о видео
+                try:
+                    info = ydl.extract_info(url, download=False)
+                except yt_dlp.utils.DownloadError as e:
+                    # Если ошибка при получении информации
+                    error_msg = str(e)
+                    logger.error(f"Ошибка получения информации: {error_msg}")
+                    return DownloadResult(success=False, error=error_msg)
+                
+                # Если информация получена, пробуем скачать
+                try:
+                    ydl.download([url])
+                except yt_dlp.utils.DownloadError as e:
+                    # Если ошибка при скачивании
+                    error_msg = str(e)
+                    logger.error(f"Ошибка скачивания: {error_msg}")
+                    return DownloadResult(success=False, error=error_msg)
+
                 original_filename = os.path.join(self.download_dir, f"{file_id}.mp3")
                 
                 if not os.path.exists(original_filename):
@@ -98,12 +113,6 @@ class AudioDownloader:
                     duration=info.get('duration', 0),
                     uploader=info.get('uploader', 'Unknown')
                 )
-                
-        except yt_dlp.utils.DownloadError as e:
-            # ПЕРЕХВАТЫВАЕМ ИСКЛЮЧЕНИЕ YT-DLP
-            error_msg = str(e)
-            logger.error(f"Ошибка yt-dlp: {error_msg}")
-            return DownloadResult(success=False, error=error_msg)
                 
         except Exception as e:
             logger.error(f"Ошибка в _download_sync: {e}")
@@ -136,9 +145,10 @@ class AudioDownloader:
                     logger.info(f"Успешно скачано через прокси #{i+1}")
                     return result
                 else:
-                    logger.warning(f"Прокси #{i+1} не сработал")
+                    logger.warning(f"Прокси #{i+1} не сработал: {result.error}")
                     
             except Exception as e:
+                logger.error(f"Ошибка с прокси #{i+1}: {e}")
                 continue
             
             await asyncio.sleep(1)
