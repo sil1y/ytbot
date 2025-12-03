@@ -34,8 +34,8 @@ class AudioDownloader:
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '320',
-            }],
+                'preferredquality': '320',}],
+            
             'writethumbnail': False,
             'embedthumbnail': False,
             'addmetadata': True,
@@ -50,6 +50,20 @@ class AudioDownloader:
             'geo_bypass': True,
             'geo_bypass_country': 'US',  
             'geo_bypass_ip_block': None,
+            
+            'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-us,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'DNT': '1',
+            'Connection': 'keep-alive'},
+            
+            'no_color': True,
+            'no_call_home': True,
+            'no_check_certificate': True,
+            'prefer_free_formats': False,
+            'verbose': False,
         }
 
     async def download_audio(self, url: str) -> DownloadResult:
