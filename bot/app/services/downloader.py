@@ -157,7 +157,7 @@ class AudioDownloader:
         return DownloadResult(success=False, error="Не удалось скачать через прокси")
 
     def _load_raw_proxies(self) -> List[str]:
-        proxy_file = 'ytbot/bot/http_proxies.txt'
+        proxy_file = 'bot/http_proxies.txt'
         proxies = []
         if os.path.exists(proxy_file):
             try:
