@@ -26,10 +26,10 @@ async def handle_download(message: types.Message):
     status_msg = await message.reply("⏬ Скачиваю аудио...")
     
     try:
-        is_valid, _, error_msg = await validator.validate_video(url, config.MAX_DURATION)
-        if not is_valid:
-            await status_msg.edit_text(f"❌ {error_msg}")
-            return
+        # is_valid, _, error_msg = await validator.validate_video(url, config.MAX_DURATION)
+        # if not is_valid:
+        #     await status_msg.edit_text(f"❌ {error_msg}")
+        #     return
         
         logger.info(f"Начинаем скачивание: {url[:50]}...")
         
