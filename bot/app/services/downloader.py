@@ -85,7 +85,7 @@ class AudioDownloader:
                 info = ydl.extract_info(url, download=False)
                 ydl.download([url])
     
-                original_filename =  os.path.join(self.download_dir, f"{file_id}.mp3")
+                original_filename = os.path.join(self.download_dir, f"{file_id}.mp3")
                 
                 if not os.path.exists(original_filename):
                     logger.error(f"Файл не найден: {original_filename}")
@@ -98,6 +98,12 @@ class AudioDownloader:
                     duration=info.get('duration', 0),
                     uploader=info.get('uploader', 'Unknown')
                 )
+                
+        except yt_dlp.utils.DownloadError as e:
+            # ПЕРЕХВАТЫВАЕМ ИСКЛЮЧЕНИЕ YT-DLP
+            error_msg = str(e)
+            logger.error(f"Ошибка yt-dlp: {error_msg}")
+            return DownloadResult(success=False, error=error_msg)
                 
         except Exception as e:
             logger.error(f"Ошибка в _download_sync: {e}")
