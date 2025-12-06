@@ -1,3 +1,4 @@
+#download.py
 import asyncio
 from aiogram import Router, types, F
 from aiogram.types import FSInputFile
@@ -7,13 +8,14 @@ import os
 from config import config
 from app.services.downloader import AudioDownloader
 from app.services.validators import URLValidator
+from app.services.audio_analyzer import AudioAnalyzer
 
 logger = logging.getLogger(__name__)
 router = Router()
 
-# Простой асинхронный загрузчик
 downloader = AudioDownloader(config)
 validator = URLValidator()
+analyzer = AudioAnalyzer()
 
 @router.message(F.text)
 async def handle_download(message: types.Message):
@@ -39,6 +41,10 @@ async def handle_download(message: types.Message):
             await status_msg.edit_text(f"❌ {result.error}")
             return
         
+        await status_msg.edit_text("🔍 Анализирую аудио...")
+        
+        audio_analysis = await analyzer.analyze_audio(result.filename)
+        
         caption = f"🎵 <b>{result.title}</b>"
         
         if result.duration:
@@ -46,9 +52,11 @@ async def handle_download(message: types.Message):
             seconds = result.duration % 60
             caption += f"\n⏳ <b>Длительность:</b> {minutes}:{seconds:02d}"
         
-        # if result.audio_analysis:            
-        #     caption += f"\n🎧 <b>BPM:</b> {result.audio_analysis.get('bpm')}"
-        #     caption += f"\n🎹 <b>Тональность:</b> {result.audio_analysis.get('key')}"
+        if audio_analysis.get('bpm'):
+            caption += f"\n🎧 <b>BPM:</b> {audio_analysis['bpm']}"
+        
+        if audio_analysis.get('key'):
+            caption += f"\n🎹 <b>Тональность:</b> {audio_analysis['key']}"
         
         await message.reply_audio(
             audio=FSInputFile(result.filename),
